@@ -1,5 +1,5 @@
 " Author:  Eric Van Dewoestine
-" Version: 0.6
+" Version: 0.7
 "
 " Description: {{{
 "   Plugin for managing daily log entries.
@@ -51,8 +51,9 @@
   if !exists("g:dailylog_time_format")
     let g:dailylog_time_format = '%R'
   endif
-  if !exists("g:dailylog_extension")
-    let g:dailylog_extension = '.txt'
+  if !exists("g:dailylog_path")
+    let g:dailylog_path = '<year>-<month>-<day>.txt'
+    "let g:dailylog_path = '<year>/<month>/<day>.txt'
   endif
   if !exists("g:dailylog_delimiter")
     let g:dailylog_delimiter =
@@ -72,13 +73,16 @@
     let g:dailylog_win_cmd = 'botright split'
   endif
   if !exists("g:dailylog_link_cmd")
-    let g:dailylog_link_cmd = 'edit <file>'
+    let g:dailylog_link_cmd = 'aboveleft split <file>'
   endif
   if !exists("g:dailylog_win_size")
     let g:dailylog_win_size = 15
   endif
   if !exists("g:dailylog_time_pattern")
     let g:dailylog_time_pattern = '[0-9][0-9]:[0-9][0-9]'
+  endif
+  if !exists("g:dailylog_duration_pattern")
+    let g:dailylog_duration_pattern = '\d\+hrs\. \d\+min\. (\d\+\.\d\+hrs\.)'
   endif
   if !exists("g:dailylog_delimiter_pattern")
     let g:dailylog_delimiter_pattern = '[-]\{5,}'
@@ -120,11 +124,16 @@
 
 " Script Variables {{{
   let s:time_range_pattern =
-    \ '^\s*' .
+    \ '^\(\s*' .
     \ g:dailylog_time_pattern .
     \ '\s*-\s*' .
     \ g:dailylog_time_pattern .
-    \ '\s*$'
+    \ '\)\s*' .
+    \ '\(' . g:dailylog_duration_pattern . '\)\?' .
+    \ '$'
+
+  let s:header_report_pattern =
+    \ '^\(daily_log_.\{-}\)\s\+.*$'
 " }}}
 
 " Open(date) {{{
@@ -138,7 +147,16 @@ function! dailylog#Open (date)
     let date = strftime(g:dailylog_date_format)
   endif
 
-  let file = g:dailylog_home . date . g:dailylog_extension
+  let parts = split(date, '-')
+  let path = g:dailylog_path
+  let path = substitute(path, '<year>', parts[0], '')
+  let path = substitute(path, '<month>', parts[1], '')
+  let path = substitute(path, '<day>', parts[2], '')
+  let file = g:dailylog_home . path
+  let dir = fnamemodify(file, ':h')
+  if !isdirectory(dir)
+    call mkdir(dir, 'p')
+  endif
 
   if s:OpenFile(file)
     call s:DailyLogFileHeader(g:dailylog_header, date, file)
@@ -239,8 +257,7 @@ function! dailylog#Restart ()
   let line = 1
   let entry = -1
   while line
-    let line = search(
-      \ g:dailylog_time_pattern . ' -\s*' . g:dailylog_time_pattern . '\s*$', 'W')
+    let line = search(s:time_range_pattern, 'W')
     if line != 0 && s:IsCommentLine(line + 1)
       let entry = entry + 1
       let entries_{entry} = line
@@ -291,12 +308,12 @@ endfunction
 
 " Search(pattern) {{{
 function! dailylog#Search (pattern)
-  let curdir = getcwd()
-  silent exec "lcd " . g:dailylog_home
-  silent exec "grep! '" . a:pattern . "' *" . g:dailylog_extension
-  silent exec "lcd " . curdir
-  exec "normal \<C-L>"
-  copen
+  call dailylog#Open('')
+  let path = g:dailylog_path
+  let path = substitute(path, '<year>', '*', '')
+  let path = substitute(path, '<month>', '*', '')
+  let path = substitute(path, '<day>', '*', '')
+  exec 'vimgrep ' . a:pattern . ' ' . g:dailylog_home . path
 endfunction
 " }}}
 
@@ -304,39 +321,37 @@ endfunction
 function! dailylog#Report (date)
   call dailylog#Open(a:date)
 
+  let pos = getpos('.')
   call cursor(1,1)
 
   " first get all entries
   let line = 1
-  let entry = -1
+  let entries = -1
+  let total_duration = 0
   while line
     let line = search(s:time_range_pattern, 'W')
     if line != 0 && getline(line - 1) =~ g:dailylog_delimiter_pattern
-      let entry = entry + 1
-      let entries_{entry} = line
+      let entries = entries + 1
+      let dur = s:GetEntryDuration(line)
+      let lastline = dur[0]
+      let duration = dur[1]
+      let total_duration = total_duration + duration
+      let entry_report = s:Report(g:dailylog_time_report, duration)
+      let updated = substitute(getline(lastline), s:time_range_pattern, '\1', '')
+      call setline(lastline, updated . '    ' . entry_report)
     endif
   endwhile
 
-  if entry == -1
-    echom "No entries found."
+  if entries == -1
+    echom 'No entries found.'
     return
   endif
 
-  let total_duration = 0
-  if entry != -1
-    " build a summary for each entry
-    let prompt = ""
-    let index = 0
-    while index <= entry
-      echo index . ") " . s:Summarize(entries_{index})
-      let duration = s:GetEntryDuration(entries_{index})
-      let total_duration = total_duration + duration
-      echo "   " . s:Report(g:dailylog_time_report, duration)
-      let index = index + 1
-    endwhile
-  endif
-  echo " "
-  echo "Total: " . s:Report(g:dailylog_time_report, total_duration)
+  let header = substitute(getline(2), s:header_report_pattern, '\1', '')
+  let total_report = 'Total: ' . s:Report(g:dailylog_time_report, total_duration)
+  call setline(2, header . '    ' . total_report)
+
+  call setpos('.', pos)
 endfunction
 " }}}
 
@@ -444,21 +459,25 @@ endfunction
 
 " DailyLogSyntax() {{{
 function! s:DailyLogSyntax ()
+  set ft=dailylog
   hi link DailyLogTime Constant
+  hi link DailyLogDuration Constant
   hi link DailyLogDelimiter Constant
   hi link DailyLogField Keyword
   hi link DailyLogLink Special
   " match time in the form of 08:12
   exec "syntax match DailyLogTime /" . g:dailylog_time_pattern . "/"
-  " match at least 5 '-'s in a row
+  " match durations in the form of 1hrs. 16min. (1.266hrs.)
+  exec "syntax match DailyLogDuration /" . g:dailylog_duration_pattern . "/"
   exec "syntax match DailyLogDelimiter /" . g:dailylog_delimiter_pattern . "/"
   exec "syntax match DailyLogField /" . g:dailylog_field_pattern . "/"
   exec "syntax match DailyLogLink /" . g:dailylog_link_pattern . "/"
+  syntax match DailyLogLink /#[0-9]\+/
 endfunction
 " }}}
 
-" DailyLogFileHeader(header,date,file) {{{
-function! s:DailyLogFileHeader (header,date,file)
+" DailyLogFileHeader(header, date, file) {{{
+function! s:DailyLogFileHeader (header, date, file)
   let header = a:header
   call map(header, "substitute(v:val, '<date>', a:date, 'g')")
   call map(header, "substitute(v:val, '<file>', a:file, 'g')")
@@ -480,8 +499,17 @@ function! s:OpenFile (file)
   if bufwinnr(bufnr(a:file)) != -1
     exec bufwinnr(bufnr(a:file)) . 'wincmd w'
   else
+    let filename = expand('%:p')
+
     exec g:dailylog_win_cmd . ' ' . a:file
     exec "resize " . g:dailylog_win_size
+    set winfixheight
+
+    let b:filename = filename
+    augroup eclim_temp_window
+      autocmd! BufUnload <buffer>
+      call eclim#util#GoToBufferWindowRegister(b:filename)
+    augroup END
   endif
 
   return isNew
@@ -491,29 +519,24 @@ endfunction
 " DailyLogOpenLink() {{{
 function! DailyLogOpenLink ()
   let line = getline('.')
-  let index = strridx(line, '|')
-  let num = 0
-  if index > col('.')
-    while index > col('.')
-      let line = strpart(line, 0, index)
-      let index = strridx(line, '|')
-      let num = num + 1
-    endwhile
-    " if num is even, then we are in between 2 different links.
-    if num % 2 == 0
-      echom "NOT ON A LINK"
+  let link = substitute(
+    \ getline('.'), '.*|\(.\{-}\%' . col('.') . 'c.\{-}\)|.*', '\1', '')
+  if link != line && filereadable(expand(link))
+    echom 'link = ' . link
+    silent exec substitute(g:dailylog_link_cmd, '<file>', link, 'g')
+    return
+  endif
+
+  let link = substitute(
+    \ getline('.'), '.*#\([0-9]\{-}\%' . col('.') . 'c.\{-}\)\W.*', '\1', '')
+  if link != line
+    if !exists("g:dailylog_tracker_url")
+      echoe "Linking to tickets requires setting " .
+        \ "'g:dailylog_tracker_url' to be set."
       return
     endif
-
-    let index = stridx(line, '|')
-    while index < col('.') && index != -1
-      let line = strpart(line, index + 1)
-      let index = stridx(line, '|')
-    endwhile
-
-    if line != ''
-      silent exec substitute(g:dailylog_link_cmd, '<file>', line, 'g')
-    endif
+    let url = substitute(g:dailylog_tracker_url, '<id>', link, '')
+    call eclim#web#OpenUrl(url)
   endif
 endfunction
 " }}}
@@ -565,12 +588,14 @@ function! s:GetEntryDuration (entry)
   let linenum = a:entry
   let line = getline(linenum)
   while line =~ s:time_range_pattern
+    let line = substitute(line, s:time_range_pattern, '\1', '')
+    call setline(linenum, line)
     let duration = duration + s:GetDuration(line)
     let linenum = linenum + 1
     let line = getline(linenum)
   endwhile
 
-  return duration
+  return [linenum - 1, duration]
 endfunction " }}}
 
 " Report(report, duration) {{{
