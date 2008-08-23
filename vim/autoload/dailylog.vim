@@ -37,23 +37,8 @@
     endif
     let g:dailylog_home = expand(g:dailylog_home)
   endif
-  if !exists("g:dailylog_todo_files")
-    let g:dailylog_todo_files = g:dailylog_home . 'todo/'
-  else
-    if g:dailylog_todo_files !~ '/$'
-      let g:dailylog_todo_files = g:dailylog_todo_files . '/'
-    endif
-    let g:dailylog_home = expand(g:dailylog_todo_files)
-  endif
-  if !exists("g:dailylog_date_format")
-    let g:dailylog_date_format = '%F'
-  endif
-  if !exists("g:dailylog_time_format")
-    let g:dailylog_time_format = '%R'
-  endif
   if !exists("g:dailylog_path")
     let g:dailylog_path = '<year>-<month>-<day>.txt'
-    "let g:dailylog_path = '<year>/<month>/<day>.txt'
   endif
   if !exists("g:dailylog_delimiter")
     let g:dailylog_delimiter =
@@ -87,38 +72,11 @@
   if !exists("g:dailylog_delimiter_pattern")
     let g:dailylog_delimiter_pattern = '[-]\{5,}'
   endif
-  if !exists("g:dailylog_field_pattern")
-    let g:dailylog_field_pattern = '^\s*\(Description\|Priority\)\s*:'
-  endif
-  if !exists("g:dailylog_link_pattern")
-    let g:dailylog_link_pattern = '|.\{-}|'
-  endif
   if !exists("g:dailylog_summary_length")
     let g:dailylog_summary_length = 65
   endif
   if !exists("g:dailylog_time_report")
     let g:dailylog_time_report = '<hours>hrs. <mins>min. (<hours_decimal>hrs.)'
-  endif
-  if !exists("g:dailylog_todo_file")
-    let g:dailylog_todo_file = 'todo.txt'
-  endif
-  if !exists("g:dailylog_todo_header")
-    let g:dailylog_todo_header =
-        \ [g:dailylog_delimiter, "Todo", g:dailylog_delimiter]
-  endif
-  if !exists("g:dailylog_todo_entry_template")
-    let g:dailylog_todo_entry_template = [
-        \ "\tDescription: <cursor>",
-        \ "\tPriority: <priority>",
-        \ g:dailylog_delimiter]
-  endif
-  if !exists("g:dailylog_todo_priority_regex")
-    let g:dailylog_todo_priority_regex = '^\s\+Priority:\s*'
-  endif
-  if !exists("g:dailylog_todo_priorities_0")
-    let g:dailylog_todo_priorities_0 = "Low"
-    let g:dailylog_todo_priorities_1 = "Medium"
-    let g:dailylog_todo_priorities_2 = "High"
   endif
 " }}}
 
@@ -134,6 +92,13 @@
 
   let s:header_report_pattern =
     \ '^\(daily_log_.\{-}\)\s\+.*$'
+
+  let s:browsers = [
+      \ 'opera', 'firefox', 'konqueror', 'epiphany',
+      \ 'mozilla', 'netscape', 'iexplore'
+    \ ]
+
+  let s:time_format = '%R'
 " }}}
 
 " Open(date) {{{
@@ -144,7 +109,7 @@ function! dailylog#Open (date)
 
   let date = a:date
   if date == ""
-    let date = strftime(g:dailylog_date_format)
+    let date = strftime('%F')
   endif
 
   let parts = split(date, '-')
@@ -159,11 +124,13 @@ function! dailylog#Open (date)
   endif
 
   if s:OpenFile(file)
-    call s:DailyLogFileHeader(g:dailylog_header, date, file)
+    let header = g:dailylog_header
+    call map(header, "substitute(v:val, '<date>', date, 'g')")
+    call map(header, "substitute(v:val, '<file>', file, 'g')")
+    call append(1, header)
+    silent 1delete _
   endif
-
-  noremap <silent> <buffer> <cr> :call DailyLogOpenLink()<cr>
-  call <SID>DailyLogSyntax()
+  call s:Syntax()
 endfunction
 " }}}
 
@@ -171,7 +138,7 @@ endfunction
 function! dailylog#Start ()
   call dailylog#Open("")
 
-  let time = strftime(g:dailylog_time_format)
+  let time = strftime(s:time_format)
   let entry = deepcopy(g:dailylog_entry_template)
   call map(entry, "substitute(v:val, '<time>', time, 'g')")
 
@@ -230,7 +197,7 @@ function! dailylog#Stop ()
   if line != 0
     call cursor(line, 1)
 
-    let time = strftime(g:dailylog_time_format)
+    let time = strftime(s:time_format)
     if getline(".") !~ '$\s'
       let time = " " . time
     endif
@@ -295,7 +262,7 @@ function! dailylog#Restart ()
   if line != 0
     call cursor(line, 1)
 
-    let time = strftime(g:dailylog_time_format)
+    let time = strftime(s:time_format)
 
     let save = @p
     let @p = time . " -"
@@ -306,21 +273,8 @@ function! dailylog#Restart ()
 endfunction
 " }}}
 
-" Search(pattern) {{{
-function! dailylog#Search (pattern)
-  call dailylog#Open('')
-  let path = g:dailylog_path
-  let path = substitute(path, '<year>', '*', '')
-  let path = substitute(path, '<month>', '*', '')
-  let path = substitute(path, '<day>', '*', '')
-  exec 'vimgrep ' . a:pattern . ' ' . g:dailylog_home . path
-endfunction
-" }}}
-
-" Report(date) {{{
-function! dailylog#Report (date)
-  call dailylog#Open(a:date)
-
+" Report() {{{
+function! dailylog#Report ()
   let pos = getpos('.')
   call cursor(1,1)
 
@@ -355,139 +309,140 @@ function! dailylog#Report (date)
 endfunction
 " }}}
 
-" TodoOpen() {{{
-function! dailylog#TodoOpen ()
-  if !s:ValidateEnv()
-    return
-  endif
-
-  let file = g:dailylog_home . g:dailylog_todo_file
-  if s:OpenFile(file)
-    call s:DailyLogFileHeader(g:dailylog_todo_header, "", file)
-  endif
-
-  noremap <silent> <buffer> <cr> :call DailyLogOpenLink()<cr>
-  call <SID>DailyLogSyntax()
+" Search(pattern) {{{
+function! dailylog#Search (pattern)
+  call dailylog#Open('')
+  let path = g:dailylog_path
+  let path = substitute(path, '<year>', '*', '')
+  let path = substitute(path, '<month>', '*', '')
+  let path = substitute(path, '<day>', '*', '')
+  exec 'vimgrep ' . a:pattern . ' ' . g:dailylog_home . path
 endfunction
 " }}}
 
-" TodoNew() {{{
-function! dailylog#TodoNew ()
-  call dailylog#TodoOpen()
+" GoToBufferWindow(bufname) {{{
+" Returns to the window containing the supplied buffer name.
+function! dailylog#GoToBufferWindow (bufname)
+  let winnr = bufwinnr(bufnr('^' . a:bufname))
+  if winnr != -1
+    exec winnr . "winc w"
+  endif
+endfunction " }}}
 
-  let priority_index = 0
-  let priority_prompt = ""
-  while exists("g:dailylog_todo_priorities_" . priority_index)
-    let priority_prompt = priority_index . ") " .
-      \ g:dailylog_todo_priorities_{priority_index} . "\n" . priority_prompt
-    let priority_index = priority_index + 1
-  endwhile
-  let priority_prompt = priority_prompt . "Choose a priority: "
+" CommandCompleteDate(bufname) {{{
+" Command completion function for completing date for :DailyLogOpen
+function! dailylog#CommandCompleteDate (argLead, cmdLine, cursorPos)
+  let cmdLine = strpart(a:cmdLine, 0, a:cursorPos)
+  let path = g:dailylog_path
+  let path = substitute(path, '<year>', '*', '')
+  let path = substitute(path, '<month>', '*', '')
+  let path = substitute(path, '<day>', '*', '')
 
-  let priority_result = input(priority_prompt)
-  while priority_result !~ '[0-9]'
-      \ || priority_result < 0
-      \ || priority_result >= priority_index
-    let priority_result = input(priority_prompt)
-  endwhile
+  let results = split(globpath(g:dailylog_home, path), '\n')
+  let pattern = '.\{-}' . g:dailylog_path . '.\{-}'
+  let pattern = substitute(pattern, '<\(year\|month\|day\)>', '\\(\\d\\+\\)', 'g')
+  call map(results, 'substitute(v:val, pattern, "\\1-\\2-\\3", "")')
+  call filter(results, 'v:val =~ "^" . a:argLead')
 
-  let priority = g:dailylog_todo_priorities_{priority_result}
+  return results
+endfunction " }}}
 
-  " move the cursor to the location of the last entry with the specified
-  " priority, if none after the last entry of the next highest priority,
-  " if none again, then before the last entry of lower priority, or if no
-  " other entries, put at end of the file.
-  let regex = g:dailylog_todo_priority_regex . priority
-  call cursor(line('$'), 1)
+" s:Exec(cmd) {{{
+" Executes system() accounting for possibly disruptive vim options.
+function! s:Exec (cmd)
+  let saveshell = &shell
+  let saveshellcmdflag = &shellcmdflag
+  let saveshellpipe = &shellpipe
+  let saveshellquote = &shellquote
+  let saveshellredir = &shellredir
+  let saveshellslash = &shellslash
+  let saveshelltemp = &shelltemp
+  let saveshellxquote = &shellxquote
 
-  "search up for the last occurrence of the selected priority
-  if search(regex, 'bW') > 0
-    call search(g:dailylog_delimiter_regex, 'W')
+  if has("win32") || has("win64")
+    set shell=cmd.exe
+    set shellcmdflag=/c
+    set shellpipe=>%s\ 2>&1
+    set shellquote=
+    set shellredir=>%s\ 2>&1
+    set noshellslash
+    set shelltemp
+    set shellxquote=
   else
-    " search up for the last occurrence of higher priority
-    let priority_index = priority_result + 1
-    while exists("g:dailylog_todo_priorities_" . priority_index)
-      let regex = g:dailylog_todo_priority_regex .
-        \ g:dailylog_todo_priorities_{priority_index}
-      if search(regex, 'bW') > 0
-        call search(g:dailylog_delimiter_regex, 'W')
-        break
-      endif
-      let priority_index = priority_index + 1
-    endwhile
-
-    " if still haven't found an entry, search for the first occurrence of a
-    " lower priority.
-    if line('.') == line('$')
-      let priority_index = priority_result - 1
-      while exists("g:dailylog_todo_priorities_" . priority_index)
-        let regex = g:dailylog_todo_priority_regex .
-          \ g:dailylog_todo_priorities_{priority_index}
-        if search(regex, 'w') > 0
-          call search(g:dailylog_delimiter_regex, 'bW')
-          break
-        endif
-        let priority_index = priority_index - 1
-      endwhile
+    if executable('/bin/bash')
+      set shell=/bin/bash
+    else
+      set shell=/bin/sh
     endif
+    set shell=/bin/sh
+    set shellcmdflag=-c
+    set shellpipe=2>&1\|\ tee
+    set shellquote=
+    set shellredir=>%s\ 2>&1
+    set noshellslash
+    set shelltemp
+    set shellxquote=
   endif
 
-  " put the new entry
-  let entry = deepcopy(g:dailylog_todo_entry_template)
-  call map(entry, "substitute(v:val, '<priority>', priority, 'g')")
-  call append(line('.'), entry)
-  retab
+  exec a:cmd
 
-  call s:StartInsert()
+  let &shell = saveshell
+  let &shellcmdflag = saveshellcmdflag
+  let &shellpipe = saveshellpipe
+  let &shellquote = saveshellquote
+  let &shellredir = saveshellredir
+  let &shellslash = saveshellslash
+  let &shelltemp = saveshelltemp
+  let &shellxquote = saveshellxquote
+endfunction " }}}
+
+" s:GetDuration(line) {{{
+function! s:GetDuration (line)
+  let time1 = substitute(a:line,
+    \ '\s*\(' . g:dailylog_time_pattern . '\)\s*-.*', '\1', '')
+  let time2 = substitute(a:line,
+    \ '.*-\s*\(' . g:dailylog_time_pattern . '\).*', '\1', '')
+
+  let time1 = substitute(
+    \ system("date --date=\"" . time1 . "\" +%s"), '\n', '', '')
+  let time2 = substitute(
+    \ system("date --date=\"" . time2 . "\" +%s"), '\n', '', '')
+
+  return time2 - time1
 endfunction
 " }}}
 
-" ValidateEnv() {{{
-" Validates that the current environment is setup for the daily log plugin.
-function! s:ValidateEnv ()
-  if filewritable(g:dailylog_home) != 2
-    echoe "Cannot write to directory '" . g:dailylog_home . "'."
-    return 0
+" s:GetEntryDuration(entry) {{{
+function! s:GetEntryDuration (entry)
+  let duration = 0
+
+  let linenum = a:entry
+  let line = getline(linenum)
+  while line =~ s:time_range_pattern
+    let line = substitute(line, s:time_range_pattern, '\1', '')
+    call setline(linenum, line)
+    let duration = duration + s:GetDuration(line)
+    let linenum = linenum + 1
+    let line = getline(linenum)
+  endwhile
+
+  return [linenum - 1, duration]
+endfunction " }}}
+
+" s:IsCommentLine(line) {{{
+function! s:IsCommentLine (line)
+  let text = getline(a:line)
+  if text !~ '^\s*$' &&
+      \ text !~ '^' . g:dailylog_time_pattern &&
+      \ text !~ g:dailylog_delimiter_pattern
+    return 1
   endif
-  if !exists("*strftime")
-    echoe "Required function 'strftime()' not available on this system."
-    return 0
-  endif
-  return 1
+
+  return 0
 endfunction
 " }}}
 
-" DailyLogSyntax() {{{
-function! s:DailyLogSyntax ()
-  set ft=dailylog
-  hi link DailyLogTime Constant
-  hi link DailyLogDuration Constant
-  hi link DailyLogDelimiter Constant
-  hi link DailyLogField Keyword
-  hi link DailyLogLink Special
-  " match time in the form of 08:12
-  exec "syntax match DailyLogTime /" . g:dailylog_time_pattern . "/"
-  " match durations in the form of 1hrs. 16min. (1.266hrs.)
-  exec "syntax match DailyLogDuration /" . g:dailylog_duration_pattern . "/"
-  exec "syntax match DailyLogDelimiter /" . g:dailylog_delimiter_pattern . "/"
-  exec "syntax match DailyLogField /" . g:dailylog_field_pattern . "/"
-  exec "syntax match DailyLogLink /" . g:dailylog_link_pattern . "/"
-  syntax match DailyLogLink /#[0-9]\+/
-endfunction
-" }}}
-
-" DailyLogFileHeader(header, date, file) {{{
-function! s:DailyLogFileHeader (header, date, file)
-  let header = a:header
-  call map(header, "substitute(v:val, '<date>', a:date, 'g')")
-  call map(header, "substitute(v:val, '<file>', a:file, 'g')")
-
-  call append(1, header)
-  silent 1delete
-endfunction
-" }}}
-
-" OpenFile(file) {{{
+" s:OpenFile(file) {{{
 function! s:OpenFile (file)
   let isNew = 0
   " determine if the file is new.
@@ -506,18 +461,22 @@ function! s:OpenFile (file)
     set winfixheight
 
     let b:filename = filename
-    augroup eclim_temp_window
+    augroup dailylog_temp_window
       autocmd! BufUnload <buffer>
-      call eclim#util#GoToBufferWindowRegister(b:filename)
+      exec 'autocmd BufUnload <buffer> call dailylog#GoToBufferWindow("' .
+        \ escape(b:filename, '\') . '")'
     augroup END
+
+    noremap <silent> <buffer> <cr> :call <SID>OpenLink()<cr>
+    command! -nargs=0 -buffer DailyLogReport :call dailylog#Report()
   endif
 
   return isNew
 endfunction
 " }}}
 
-" DailyLogOpenLink() {{{
-function! DailyLogOpenLink ()
+" s:OpenLink() {{{
+function! s:OpenLink ()
   let line = getline('.')
   let link = substitute(
     \ getline('.'), '.*|\(.\{-}\%' . col('.') . 'c.\{-}\)|.*', '\1', '')
@@ -536,15 +495,15 @@ function! DailyLogOpenLink ()
       return
     endif
     let url = substitute(g:dailylog_tracker_url, '<id>', link, '')
-    call eclim#web#OpenUrl(url)
+    call s:OpenUrl(url)
   endif
 endfunction
 " }}}
 
-" Prompt(prompt, min,max) {{{
+" s:Prompt(prompt, min, max) {{{
 function! s:Prompt (prompt, min, max)
   let result = -1
-  while (result < a:min) || (result > a:max)
+  while result < a:min || result > a:max
     let result = input(a:prompt)
   endwhile
 
@@ -552,53 +511,7 @@ function! s:Prompt (prompt, min, max)
 endfunction
 " }}}
 
-" Summarize(entry) {{{
-function! s:Summarize (entry)
-  call cursor(a:entry, 1)
-
-  let line = 0
-  while line == 0
-    let text = getline(".")
-    if text =~ g:dailylog_delimiter_pattern
-      break
-    elseif s:IsCommentLine(line("."))
-      let line = line(".")
-    else
-      call cursor(line(".") + 1, 1)
-    endif
-  endwhile
-
-  " no text found
-  if line == 0
-    return "No Summary."
-  endif
-
-  let summary = substitute(getline(line), '^\s\+', '', '')
-  if strlen(summary) > g:dailylog_summary_length
-    let summary = strpart(summary, 0, g:dailylog_summary_length - 3) . "..."
-  endif
-  return summary
-endfunction
-" }}}
-
-" GetEntryDuration(entry) {{{
-function! s:GetEntryDuration (entry)
-  let duration = 0
-
-  let linenum = a:entry
-  let line = getline(linenum)
-  while line =~ s:time_range_pattern
-    let line = substitute(line, s:time_range_pattern, '\1', '')
-    call setline(linenum, line)
-    let duration = duration + s:GetDuration(line)
-    let linenum = linenum + 1
-    let line = getline(linenum)
-  endwhile
-
-  return [linenum - 1, duration]
-endfunction " }}}
-
-" Report(report, duration) {{{
+" s:Report(report, duration) {{{
 function! s:Report (report, duration)
   let mins = a:duration / 60
   let hours = mins / 60
@@ -628,44 +541,188 @@ function! s:Report (report, duration)
 endfunction
 " }}}
 
-" GetDuration(line) {{{
-function! s:GetDuration (line)
-  let time1 = substitute(a:line,
-    \ '\s*\(' . g:dailylog_time_pattern . '\)\s*-.*', '\1', '')
-  let time2 = substitute(a:line,
-    \ '.*-\s*\(' . g:dailylog_time_pattern . '\).*', '\1', '')
-
-  let time1 = substitute(
-    \ system("date --date=\"" . time1 . "\" +%s"), '\n', '', '')
-  let time2 = substitute(
-    \ system("date --date=\"" . time2 . "\" +%s"), '\n', '', '')
-
-  return time2 - time1
-endfunction
-" }}}
-
-" IsCommentLine(line) {{{
-function! s:IsCommentLine (line)
-  let text = getline(a:line)
-  if text !~ '^\s*$' &&
-      \ text !~ '^' . g:dailylog_time_pattern &&
-      \ text !~ g:dailylog_delimiter_pattern
-    return 1
-  endif
-
-  return 0
-endfunction
-" }}}
-
-" StartInsert() {{{
+" s:StartInsert() {{{
 function! s:StartInsert ()
   if search('<cursor>')
-    let save = @"
-    normal df>
+    normal "_df>
     startinsert!
-    let @" = save
   endif
 endfunction
 " }}}
+
+" s:Summarize(entry) {{{
+function! s:Summarize (entry)
+  call cursor(a:entry, 1)
+
+  let line = 0
+  while line == 0
+    let text = getline(".")
+    if text =~ g:dailylog_delimiter_pattern
+      break
+    elseif s:IsCommentLine(line("."))
+      let line = line(".")
+    else
+      call cursor(line(".") + 1, 1)
+    endif
+  endwhile
+
+  " no text found
+  if line == 0
+    return "No Summary."
+  endif
+
+  let summary = substitute(getline(line), '^\s\+', '', '')
+  if strlen(summary) > g:dailylog_summary_length
+    let summary = strpart(summary, 0, g:dailylog_summary_length - 3) . "..."
+  endif
+  return summary
+endfunction
+" }}}
+
+" s:Syntax() {{{
+function! s:Syntax ()
+  set ft=dailylog
+  hi link DailyLogTime Constant
+  hi link DailyLogDuration Constant
+  hi link DailyLogDelimiter Constant
+  hi link DailyLogField Keyword
+  hi link DailyLogLink Special
+  " match time in the form of 08:12
+  exec "syntax match DailyLogTime /" . g:dailylog_time_pattern . "/"
+  " match durations in the form of 1hrs. 16min. (1.266hrs.)
+  exec "syntax match DailyLogDuration /" . g:dailylog_duration_pattern . "/"
+  exec "syntax match DailyLogDelimiter /" . g:dailylog_delimiter_pattern . "/"
+  exec "syntax match DailyLogLink /|.\{-}|/"
+  syntax match DailyLogLink /#[0-9]\+/
+endfunction
+" }}}
+
+" s:ValidateEnv() {{{
+" Validates that the current environment is setup for the daily log plugin.
+function! s:ValidateEnv ()
+  if filewritable(g:dailylog_home) != 2
+    echohl Error
+    echo "Cannot write to directory '" . g:dailylog_home . "'."
+    echo "Please create the directory or set g:dailylog_home to an existing directory."
+    echohl Normal
+    return 0
+  endif
+  if !exists("*strftime")
+    echoe "Required function 'strftime()' not available on this system."
+    return 0
+  endif
+  return 1
+endfunction
+" }}}
+
+" s:OpenUrl(url) {{{
+" Opens the supplied url in a web browser.
+function! s:OpenUrl (url)
+  if !exists('s:browser') || s:browser == ''
+    let s:browser = s:DetermineBrowser()
+
+    " slight hack for IE which doesn't like the url to be quoted.
+    if s:browser =~ 'iexplore'
+      let s:browser = substitute(s:browser, '"', '', 'g')
+    endif
+  endif
+
+  if s:browser == ''
+    return
+  endif
+
+  let url = a:url
+  let url = substitute(url, '\', '/', 'g')
+  let url = escape(url, '&%')
+  let url = escape(url, '%')
+  let command = escape(substitute(s:browser, '<url>', url, ''), '#')
+  silent! call s:Exec(command)
+  redraw!
+
+  if v:shell_error
+    echohl Error
+    echom "Unable to open browser:\n" . s:browser .
+      \ "\nCheck that the browser executable is in your PATH " .
+      \ "or that you have properly configured g:dailylog_browser"
+    echohl Normal
+  endif
+endfunction " }}}
+
+" s:DetermineBrowser() {{{
+function! s:DetermineBrowser ()
+  let browser = ''
+
+  " user specified a browser, we just need to fill in any gaps if necessary.
+  if exists("g:dailylog_browser")
+    let browser = g:dailylog_browser
+    " add "<url>" if necessary
+    if browser !~ '<url>'
+      let browser = substitute(browser,
+        \ '^\([[:alnum:][:blank:]-/\\_.:]\+\)\(.*\)$',
+        \ '\1 "<url>" \2', '')
+    endif
+
+    if has("win32") || has("win64")
+      " add 'start' to run process in background if necessary.
+      if browser !~ '^[!]\?start'
+        let browser = 'start ' . browser
+      endif
+    else
+      " add '&' to run process in background if necessary.
+      if browser !~ '&\s*$'
+        let browser = browser . ' &'
+      endif
+
+      " add redirect of std out and error if necessary.
+      if browser !~ '/dev/null'
+        let browser = substitute(browser, '\s*&\s*$', '&> /dev/null &', '')
+      endif
+    endif
+
+    if browser !~ '^\s*!'
+      let browser = '!' . browser
+    endif
+
+  " user did not specify a browser, so attempt to find a suitable one.
+  else
+    if has("win32") || has("win64")
+      " this version doesn't like .html suffixes on windows 2000
+      "if executable('rundll32')
+      "  let browser = '!rundll32 url.dll,FileProtocolHandler <url>'
+      "endif
+      " the doesn't handle local files very well or '&' in the url.
+      "let browser = '!cmd /c start <url>'
+      for name in s:win_browsers
+        if executable(name)
+          let browser = name
+          break
+        endif
+      endfor
+    elseif has("mac")
+      let browser = '!open <url>'
+    else
+      for name in s:browsers
+        if executable(name)
+          let browser = name
+          break
+        endif
+      endfor
+    endif
+
+    if browser != ''
+      let g:dailylog_browser = browser
+      let browser = s:DetermineBrowser()
+    endif
+  endif
+
+  if browser == ''
+    echohl Error
+    echom "Unable to determine browser.  " .
+      \ "Please set g:dailylog_browser to your preferred browser."
+    echohl Normal
+  endif
+
+  return browser
+endfunction " }}}
 
 " vim:ft=vim:fdm=marker

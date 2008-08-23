@@ -22,14 +22,8 @@
 "   DailyLogRestart: Opens the current daily log file if necessary and prompts
 "   you for the entry to restart.
 "
-"   DailyLogReport: Opens the current daily log file if necessary and echos a
-"   summary of each task and the duration that the entry was running.  You may
-"   also run the report for another day by supplying the date just like for
-"   DailyLogOpen.
-"     Ex. Running the report for the current daily log
-"       :DailyLogReport
-"     Ex. Running the report for January 15th 2005
-"       :DailyLogReport 2005-01-15
+"   DailyLogReport: Aggrgates per task and total times and updates the file
+"   with reports of time spent on each task and overall.
 "
 "   DailyLogSearch: Searches your configured daily log directory via vimgrep
 "   using the supplied pattern.
@@ -39,15 +33,13 @@
 
 " Command Declarations {{{
 if !exists(":DailyLogOpen")
-  command -nargs=? DailyLogOpen   :call dailylog#Open('<args>')
-  command -nargs=? DailyLogReport :call dailylog#Report('<args>')
+  command -nargs=? -complete=customlist,dailylog#CommandCompleteDate
+    \ DailyLogOpen :call dailylog#Open('<args>')
+
   command -nargs=+ DailyLogSearch :call dailylog#Search(<q-args>)
   command DailyLogStop            :call dailylog#Stop()
   command DailyLogStart           :call dailylog#Start()
   command DailyLogRestart         :call dailylog#Restart()
-  command DailyLogTodoOpen        :call dailylog#TodoOpen()
-  command DailyLogTodoNew         :call dailylog#TodoNew()
-  "command DailyLogTodoReport      :call dailylog#TodoReport()
 endif
 " }}}
 
