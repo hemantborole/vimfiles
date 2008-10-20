@@ -487,7 +487,7 @@ function! s:OpenLink ()
   endif
 
   let link = substitute(
-    \ getline('.'), '.*#\([0-9]\{-}\%' . col('.') . 'c.\{-}\)\W.*', '\1', '')
+    \ getline('.'), '.*#\([0-9]\{-}\%' . col('.') . 'c.\{-}\)\(\W.*\|$\)', '\1', '')
   if link != line
     if !exists("g:dailylog_tracker_url")
       echoe "Linking to tickets requires setting " .
