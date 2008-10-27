@@ -1,0 +1,47 @@
+#!/usr/bin/perl
+###
+# Script which will do some basic translation of vim regex patterns to perl.
+# Allows you to use ack as the vim grepprg without losing the ability to run
+# :grep <ctrl-r>/
+#
+# .vimrc
+#   set grepprg=vimack
+#   set grepformat=%-Gvimack:%.%#,%f:%l:%c:%m,%f:%l:%m
+###
+use strict;
+use App::Ack ();
+
+my @args= @ARGV;
+my $opt = App::Ack::get_command_line_options();
+my $regex = App::Ack::build_regex(defined $opt->{regex} ? $opt->{regex} : shift @ARGV, $opt);
+my $regex_orig = $regex;
+
+# translate word boundries
+$regex =~ s/\\[<>]/\\b/g;
+
+# translate expressions that are escaped in vim, but not in perl.
+$regex =~ s/\\([()|?+])/\1/g;
+
+# translate non-greedy
+$regex =~ s/\\{-}/*?/g;
+
+if ($regex ne $regex_orig){
+  print "vimack: $regex_orig -> $regex\n";
+
+  my $index = 0;
+  foreach (@args) {
+    if ($_ eq $regex_orig){
+      @args[$index] = $regex;
+    }
+    $index++;
+  }
+}
+
+unshift(@args, '--column'); # utilize my patch for rendering column numbers
+unshift(@args, '-H'); # ensure ack always prints filename
+unshift(@args, 'ack');
+
+my $cmd = join(' ', @args);
+print "vimack: $cmd\n";
+
+system(@args);
