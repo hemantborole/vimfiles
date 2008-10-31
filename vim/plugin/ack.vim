@@ -18,6 +18,8 @@ function! s:Ack (args)
     return
   endif
 
+  let escape_chars = ['|']
+
   let index = 0
   let args = ''
   let arg = ''
@@ -26,14 +28,19 @@ function! s:Ack (args)
   let prev = ''
   while index < len(a:args)
     let char = a:args[index]
+    " spaces that are not escaped or inside of a quoted expression, delimit
+    " args
     if char == ' ' && !quote && !escape
       let args .= ' "' . arg . '"'
       let arg = ''
+    " double or single quote, when not escaped, start or end a quoted
+    " expression
     elseif char =~ "['\"]" && !escape
       let quote = !quote
     else
       if char == '\'
         let escape = !escape
+        " handle escaping of spaces and '\'
         if prev == '\' || (len(a:args) > index && a:args[index + 1] == ' ')
           let index += 1
           continue
@@ -41,6 +48,12 @@ function! s:Ack (args)
       else
         let escape = 0
       endif
+
+      " some characters need to be escaped for the shell.
+      if index(escape_chars, char) != -1
+        let arg .= '\'
+      endif
+
       let arg .= char
     endif
     let prev = char
@@ -48,6 +61,10 @@ function! s:Ack (args)
   endwhile
   let args .= ' "' . arg . '"'
   silent exec 'grep ' . args
+
+  if len(getqflist()) == 0
+    call eclim#util#Echo('No results found: Ack' . args)
+  endif
 endfunction " }}}
 
 " vim:ft=vim:fdm=marker
