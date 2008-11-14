@@ -5,35 +5,40 @@
  * TODO
  *   - improve adjacent frame detection
  *   - attempt to take cursor (caret) location into account.
+ *   - frame filtering (ads, etc.)
+ *   - shortcut to focus largest frame
  *
  * @author Eric Van Dewoetine
  * @version 0.1
  */
 
+// FIXME: in command mode setFrameFocus doesn't have access to the currently
+// focused frame, so all :wincmd commands start at frames[0].
 commands.add(["wincm[d]"],
   "Change focus to a different frame",
-  function(args) {
+  function(args, special, count, modifiers) {
+    count = count > 1 ? count : "";
     switch(args.string){
       case "j":
-        liberator.execute(':normal <c-w>j');
+        events.feedkeys(count + '<c-w>j');
         break;
       case "k":
-        liberator.execute(':normal <c-w>k');
+        events.feedkeys(count + '<c-w>k');
         break;
       case "h":
-        liberator.execute(':normal <c-w>h');
+        events.feedkeys(count + '<c-w>h');
         break;
       case "l":
-        liberator.execute(':normal <c-w>l');
+        events.feedkeys(count + '<c-w>l');
         break;
       case "w":
-        liberator.execute(':normal <c-w>w');
+        events.feedkeys(count + '<c-w>w');
         break;
       default:
         liberator.echoerr("unsupported argument for wincmd");
         return false;
     }
-  }
+  }, {count: true, argCount: 1}
 );
 
 mappings.add([modes.NORMAL], ["<c-w>w", "<c-w><c-w>"],
