@@ -37,6 +37,7 @@ commands.add(["wincm[d]"],
         liberator.echoerr("unsupported argument for wincmd");
         return false;
     }
+    return true;
   }, {count: true, argCount: 1}
 );
 
@@ -96,24 +97,34 @@ mappings.add([modes.NORMAL], ["<c-w>h", "<c-w><c-h>"],
 );
 
 const wincmd = {
-  dimensions: function(frameElement){
-    return {
-      top: frameElement.offsetTop,
-      bottom: frameElement.offsetTop + frameElement.offsetHeight,
-      left: frameElement.offsetLeft,
-      right: frameElement.offsetLeft + frameElement.offsetWidth,
+  dimensions: function(frame){
+    var frameElement = frame.frameElement;
+    var offsetTop = frameElement.offsetTop;
+    var offsetLeft = frameElement.offsetLeft;
+    var parent = frame.parent;
+    if (parent != frame && parent.frameElement){
+      do {
+        offsetTop += parent.frameElement.offsetTop;
+        offsetLeft += parent.frameElement.offsetLeft;
+      } while((parent = parent.parent) && parent != frame && parent.frameElement)
     }
+    return {
+      top: offsetTop,
+      bottom: offsetTop + frameElement.offsetHeight,
+      left: offsetLeft,
+      right: offsetLeft + frameElement.offsetWidth
+    };
   },
 
   nextVertical: function(count, current, frames, down){
     current = current > 0 ? current : 0;
     var index = current;
     for (var ii = 0; ii < count; ii++){
-      var cdimen = wincmd.dimensions(frames[index].frameElement);
+      var cdimen = wincmd.dimensions(frames[index]);
       var ndimen = undefined;
       for (var jj = 0; jj < frames.length; jj++){
         frame = frames[jj];
-        var fdimen = wincmd.dimensions(frame.frameElement);
+        var fdimen = wincmd.dimensions(frame);
         if ((
             (down && fdimen.top >= cdimen.bottom) ||
             (!down && fdimen.bottom <= cdimen.top)
@@ -140,11 +151,12 @@ const wincmd = {
     current = current > 0 ? current : 0;
     var index = current;
     for (var ii = 0; ii < count; ii++){
-      var cdimen = wincmd.dimensions(frames[index].frameElement);
+      var cdimen = wincmd.dimensions(frames[index]);
       var ndimen = undefined;
       for (var jj = 0; jj < frames.length; jj++){
         frame = frames[jj];
-        var fdimen = wincmd.dimensions(frame.frameElement);
+        var fdimen = wincmd.dimensions(frame);
+liberator.echomsg(frame.document.location + ' ' + util.objectToString(fdimen, false));
         if ((
             (right && fdimen.left >= cdimen.right) ||
             (!right && fdimen.right <= cdimen.left)
@@ -190,21 +202,20 @@ const wincmd = {
     });
     start.focus();
 
-    if (frames.length == 0)
-      return;
+    var doc = window.content.document;
+    if (frames.length > 0){
+      // find the currently focused frame index
+      var current = frames.indexOf(document.commandDispatcher.focusedWindow);
 
-    // find the currently focused frame index
-    var current = frames.indexOf(document.commandDispatcher.focusedWindow);
+      var index = frameChooser(count > 1 ? count : 1, current, frames);
 
-    var index = frameChooser(count > 1 ? count : 1, current, frames);
+      // focus next frame and scroll into view
+      frames[index].focus();
+      if (frames[index] != window.content)
+        frames[index].frameElement.scrollIntoView(false);
 
-    // focus next frame and scroll into view
-    frames[index].focus();
-    if (frames[index] != window.content)
-      frames[index].frameElement.scrollIntoView(false);
-
-    // add the frame indicator
-    var doc = frames[index].document;
+      doc = frames[index].document;
+    }
     var indicator = util.xmlToDom(<div id="liberator-frame-indicator"/>, doc);
     doc.body.appendChild(indicator);
 
