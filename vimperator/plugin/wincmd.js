@@ -120,11 +120,11 @@ const wincmd = {
     current = current > 0 ? current : 0;
     var index = current;
     for (var ii = 0; ii < count; ii++){
-      var cdimen = wincmd.dimensions(frames[index]);
+      var cdimen = frames[index].dimensions;
       var ndimen = undefined;
       for (var jj = 0; jj < frames.length; jj++){
         frame = frames[jj];
-        var fdimen = wincmd.dimensions(frame);
+        var fdimen = frame.dimensions;
         if ((
             (down && fdimen.top >= cdimen.bottom) ||
             (!down && fdimen.bottom <= cdimen.top)
@@ -151,12 +151,11 @@ const wincmd = {
     current = current > 0 ? current : 0;
     var index = current;
     for (var ii = 0; ii < count; ii++){
-      var cdimen = wincmd.dimensions(frames[index]);
+      var cdimen = frames[index].dimensions;
       var ndimen = undefined;
       for (var jj = 0; jj < frames.length; jj++){
         frame = frames[jj];
-        var fdimen = wincmd.dimensions(frame);
-liberator.echomsg(frame.document.location + ' ' + util.objectToString(fdimen, false));
+        var fdimen = frame.dimensions;
         if ((
             (right && fdimen.left >= cdimen.right) ||
             (!right && fdimen.right <= cdimen.left)
@@ -197,8 +196,13 @@ liberator.echomsg(frame.document.location + ' ' + util.objectToString(fdimen, fa
     var start = document.commandDispatcher.focusedWindow;
     frames = frames.filter(function (frame) {
       frame.focus();
-      return frame.frameElement &&
-        document.commandDispatcher.focusedWindow == frame;
+      if (frame.frameElement &&
+        document.commandDispatcher.focusedWindow == frame)
+      {
+        frame.dimensions = wincmd.dimensions(frame);
+        return true;
+      }
+      return false;
     });
     start.focus();
 
