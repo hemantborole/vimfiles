@@ -2,17 +2,48 @@
  * Plugin to facilitate frame navigation by mimicking vim's
  * <c-w>/:wincmd functionality.
  *
+ * Usage:
+ *   [count]<c-w>j
+ *   [count]<c-w><c-j>
+ *      Moves focus one or more frames below the current frame.
+ *
+ *   [count]<c-w>k
+ *   [count]<c-w><c-k>
+ *      Moves focus one or more frames above the current frame.
+ *
+ *   [count]<c-w>l
+ *   [count]<c-w><c-l>
+ *      Moves focus one or more frames to the left of the current frame.
+ *
+ *   [count]<c-w>h
+ *   [count]<c-w><c-h>
+ *      Moves focus one or more frames to the right of the current frame.
+ *
+ *   [count]<c-w>w
+ *   [count]<c-w><c-w>
+ *
+ *   The above commands can also be executed with ":wincmd":
+ *
+ *   :[count]wincm[d] {arg}
+ *       Equivalent to executing [count]<c-w>{arg}
+ *
+ *   Note: none of the above will wrap around should you reach the edge of
+ *   which ever direction you are moving, with the exception of <c-w> which
+ *   will cycle through all frames, wrapping back to beginning after reaching
+ *   the last frame..
+ *
  * TODO
  *   - attempt to take cursor (caret) location into account.
  *   - frame filtering (ads, etc.)
  *   - shortcut to focus largest frame
+ *   - integrate with the "SplitBrowser" addon and "splitBrowser.js" plugin.
+ *   - if possible, add other wincmd equivalent commands
+ *     (J, K, L, H, X, T, etc.)
  *
  * @author Eric Van Dewoetine
  * @version 0.1
  */
 
-// FIXME: in command mode setFrameFocus doesn't have access to the currently
-// focused frame, so all :wincmd commands start at frames[0].
 commands.add(["wincm[d]"],
   "Change focus to a different frame",
   function(args, special, count, modifiers) {
