@@ -40,7 +40,7 @@
  *   - if possible, add other wincmd equivalent commands
  *     (J, K, L, H, X, T, etc.)
  *
- * @author Eric Van Dewoetine
+ * @author Eric Van Dewoetine (ervandew@gmail.com)
  * @version 0.1
  */
 
