@@ -32,6 +32,11 @@
  *   will cycle through all frames, wrapping back to beginning after reaching
  *   the last frame..
  *
+ *   Firebug users: <c-w> and :wincmd commands can also be used to focus
+ *   firebug panels.  Combined with the firebug plugin[1], you can navigate
+ *   firebug like other web pages in vimperator.  See the firebug plugin for
+ *   details on what features are currently provided..
+ *
  * TODO
  *   - attempt to take cursor (caret) location into account.
  *   - frame filtering (ads, etc.)
@@ -40,8 +45,10 @@
  *   - if possible, add other wincmd equivalent commands
  *     (J, K, L, H, X, T, etc.)
  *
+ * [1] http://vimperator.org/trac/ticket/50
+ *
  * @author Eric Van Dewoetine (ervandew@gmail.com)
- * @version 0.1
+ * @version 0.2
  */
 
 commands.add(["wincm[d]"],
@@ -76,12 +83,13 @@ mappings.add([modes.NORMAL], ["<c-w>w", "<c-w><c-w>"],
     "Cycle through frames",
     function (count) {
       wincmd.setFrameFocus(count, function(count, current, frames){
-        if (current < frames.length - count){
-          index = current + count;
+        var currentIndex = frames.indexOf(current);
+        if (currentIndex < frames.length - count){
+          index = currentIndex + count;
         }else{
-          index = current + count - frames.length;
+          index = currentIndex + count - frames.length;
         }
-        return index < frames.length ? index : frames.length - 1;
+        return index < frames.length ? frames[index] : frames[frames.length - 1];
       });
     },
     { flags: Mappings.flags.COUNT }
@@ -140,18 +148,15 @@ const wincmd = {
       } while((parent = parent.parent) && parent != frame && parent.frameElement)
     }
     return {
-      top: offsetTop,
-      bottom: offsetTop + frameElement.offsetHeight,
-      left: offsetLeft,
-      right: offsetLeft + frameElement.offsetWidth
+      top: offsetTop, bottom: offsetTop + frameElement.offsetHeight,
+      left: offsetLeft, right: offsetLeft + frameElement.offsetWidth
     };
   },
 
   nextVertical: function(count, current, frames, down){
-    current = current > 0 ? current : 0;
-    var index = current;
+    var next = current;
     for (var ii = 0; ii < count; ii++){
-      var cdimen = frames[index].dimensions;
+      var cdimen = next.dimensions;
       var ndimen = undefined;
       for (var jj = 0; jj < frames.length; jj++){
         frame = frames[jj];
@@ -170,19 +175,18 @@ const wincmd = {
               (!down && fdimen.bottom > ndimen.bottom))
           ){
             ndimen = fdimen;
-            index = jj;
+            next = frame;
           }
         }
       }
     }
-    return index;
+    return next;
   },
 
   nextHorizontal: function(count, current, frames, right){
-    current = current > 0 ? current : 0;
-    var index = current;
+    var next = current;
     for (var ii = 0; ii < count; ii++){
-      var cdimen = frames[index].dimensions;
+      var cdimen = next.dimensions;
       var ndimen = undefined;
       for (var jj = 0; jj < frames.length; jj++){
         frame = frames[jj];
@@ -201,12 +205,12 @@ const wincmd = {
               (!right && fdimen.right > ndimen.right))
           ){
             ndimen = fdimen;
-            index = jj;
+            next = frame;
           }
         }
       }
     }
-    return index;
+    return next;
   },
 
   // Mostly copied from buffer.shiftFrameFocus
@@ -231,30 +235,68 @@ const wincmd = {
         document.commandDispatcher.focusedWindow == frame)
       {
         frame.dimensions = wincmd.dimensions(frame);
-        return true;
+        return frame.dimensions ? true : false;
       }
       return false;
     });
     start.focus();
 
+    // inject firebug 'frames' if firebug is open.
+    var contentBox = document.getElementById('fbContentBox');
+    if (contentBox && !contentBox.collapsed){
+      // if no frames, then window.content becomes an honorary frame.
+      if (frames.length === 0){
+        window.content.dimensions = {
+          top: 0, bottom: window.content.innerHeight,
+          left: 0, right: window.content.innerWidth
+        };
+        frames.push(window.content);
+      }
+      var browser = FirebugChrome.getCurrentBrowser();
+      var panel = browser.chrome.getSelectedPanel();
+      var view = panel.document.defaultView;
+      view.dimensions = wincmdFirebug.dimensions(panel);
+      frames.push(view);
+      var sidePanel = browser.chrome.getSelectedSidePanel();
+      if (sidePanel){
+        var sideView = sidePanel.document.defaultView;
+        sideView.dimensions = wincmdFirebug.dimensions(sidePanel);
+        sideView.dimensions.left = view.dimensions.right;
+        frames.push(sideView);
+      }
+    }
+
     var doc = window.content.document;
     if (frames.length > 0){
       // find the currently focused frame index
-      var current = frames.indexOf(document.commandDispatcher.focusedWindow);
+      var currentIndex = frames.indexOf(document.commandDispatcher.focusedWindow);
+      var current = currentIndex > -1 ? frames[currentIndex] : frames[0];
 
-      var index = frameChooser(count > 1 ? count : 1, current, frames);
+      var frame = frameChooser(count > 1 ? count : 1, current, frames);
 
       // focus next frame and scroll into view
-      frames[index].focus();
-      if (frames[index] != window.content)
-        frames[index].frameElement.scrollIntoView(false);
+      frame.focus();
+      if (frame != window.content && frame.frameElement.scrollIntoView)
+        frame.frameElement.scrollIntoView(false);
 
-      doc = frames[index].document;
+      doc = frame.document;
     }
     var indicator = util.xmlToDom(<div id="liberator-frame-indicator"/>, doc);
     doc.body.appendChild(indicator);
 
     // remove the frame indicator
     setTimeout(function(){ doc.body.removeChild(indicator); }, 500);
+  }
+};
+
+const wincmdFirebug = {
+  dimensions: function(panel){
+    var contentBox = document.getElementById('fbContentBox');
+    var offsetTop = contentBox.boxObject.y;
+    var offsetLeft = contentBox.boxObject.x;
+    return {
+      top: offsetTop, bottom: offsetTop + contentBox.boxObject.height,
+      left: offsetLeft, right: offsetLeft + panel.document.width
+    };
   }
 };
