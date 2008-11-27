@@ -53,8 +53,8 @@
 
 commands.add(["wincm[d]"],
   "Change focus to a different frame",
-  function(args, special, count, modifiers) {
-    count = count > 1 ? count : "";
+  function(args) {
+    count = args.count > 1 ? args.count : "";
     switch(args.string){
       case "j":
         events.feedkeys(count + '<c-w>j');
