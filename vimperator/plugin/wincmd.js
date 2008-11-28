@@ -281,11 +281,11 @@ const wincmd = {
 
       doc = frame.document;
     }
-    var indicator = util.xmlToDom(<div id="liberator-frame-indicator"/>, doc);
+
+    var indicator = util.xmlToDom(<div highlight="FrameIndicator"/>, doc);
     doc.body.appendChild(indicator);
 
-    // remove the frame indicator
-    setTimeout(function(){ doc.body.removeChild(indicator); }, 500);
+    setTimeout(function () { doc.body.removeChild(indicator); }, 500);
   }
 };
 
