@@ -19,11 +19,13 @@ my $regex_orig = $regex;
 # translate word boundries
 $regex =~ s/\\[<>]/\\b/g;
 
-# translate expressions that are escaped in vim, but not in perl.
-$regex =~ s/\\([()|?+])/\1/g;
-
 # translate non-greedy
 $regex =~ s/\\{-}/*?/g;
+
+# translate expressions that are escaped in vim, but not in perl.
+# doing this makes it impossible to use a perl expression which actually needs
+# the escaped literal value.
+#$regex =~ s/\\([()|?+])/\1/g;
 
 if ($regex ne $regex_orig){
   print "vimack: $regex_orig -> $regex\n";
