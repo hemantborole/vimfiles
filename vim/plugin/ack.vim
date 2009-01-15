@@ -41,7 +41,7 @@ function! s:Ack (args)
       if char == '\'
         let escape = !escape
         " handle escaping of spaces and '\'
-        if prev == '\' || (len(a:args) > index && a:args[index + 1] == ' ')
+        if len(a:args) > index && a:args[index + 1] == ' '
           let index += 1
           continue
         endif
