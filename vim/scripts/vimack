@@ -16,6 +16,9 @@ my $opt = App::Ack::get_command_line_options();
 my $regex = App::Ack::build_regex(defined $opt->{regex} ? $opt->{regex} : shift @ARGV, $opt);
 my $regex_orig = $regex;
 
+# remove leading \V that vim may add when using '*'
+$regex =~ s/^\\V//g;
+
 # translate word boundries
 $regex =~ s/\\[<>]/\\b/g;
 
