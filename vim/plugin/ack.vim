@@ -18,8 +18,6 @@ function! s:Ack (args)
     return
   endif
 
-  let escape_chars = ['|']
-
   let index = 0
   let args = ''
   let arg = ''
@@ -49,18 +47,13 @@ function! s:Ack (args)
         let escape = 0
       endif
 
-      " some characters need to be escaped for the shell.
-      if index(escape_chars, char) != -1
-        let arg .= '\'
-      endif
-
       let arg .= char
     endif
     let prev = char
     let index += 1
   endwhile
   let args .= ' "' . arg . '"'
-  silent exec 'grep ' . args
+  silent exec 'grep ' . escape(args, '|')
 
   if len(getqflist()) == 0
     call eclim#util#Echo('No results found: Ack' . args)
