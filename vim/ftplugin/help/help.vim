@@ -10,7 +10,6 @@ augroup help
   autocmd!
   " after changing a help file, update the help tags.
   autocmd BufWritePost *.txt silent! exec "helptags " . expand('%:p:h')
-  autocmd BufRead ev_*.txt setlocal modifiable | setlocal noreadonly
 augroup END
 
 " vim:ft=vim:fdm=marker
