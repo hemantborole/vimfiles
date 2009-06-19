@@ -3,10 +3,6 @@
 # Script which will do some basic translation of vim regex patterns to perl.
 # Allows you to use ack as the vim grepprg without losing the ability to run
 # :grep <ctrl-r>/
-#
-# .vimrc
-#   set grepprg=vimack
-#   set grepformat=%-Gvimack:%.%#,%f:%l:%c:%m,%f:%l:%m
 ###
 use strict;
 use App::Ack ();
@@ -49,4 +45,6 @@ unshift(@args, 'ack');
 my $cmd = join(' ', @args);
 print "vimack: $cmd\n";
 
-system(@args);
+my $exit_code = system(@args);
+$exit_code >>= 8;
+exit($exit_code);
