@@ -12,7 +12,7 @@ endif
 
 " s:Ack(args) {{{
 " Executes ack and populates the quickfix buffer with the results.
-function! s:Ack (args)
+function! s:Ack(args)
   if !executable('ack')
     call eclim#util#EchoError("'ack' not found on your system path.")
     return
@@ -53,9 +53,22 @@ function! s:Ack (args)
     let index += 1
   endwhile
   let args .= ' "' . arg . '"'
-  silent exec 'grep ' . escape(args, '|')
 
-  if len(getqflist()) == 0
+  let saveerrorformat = &errorformat
+  try
+    set errorformat=%-Gack:%.%#,%-Gvimack:%.%#,%f:%l:%c:%m,%f:%l:%m,%-G%.%#
+    let cmd = 'vimack ' . escape(args, '|')
+    cexpr system(cmd)
+    call eclim#display#signs#Show('i', 'qf')
+  finally
+    let &errorformat = saveerrorformat
+  endtry
+
+  " ack returns 1 on no results found, so errors are greater than that.
+  if v:shell_error > 1
+    let error = system(cmd)
+    call eclim#util#EchoError(error)
+  elseif len(getqflist()) == 0
     call eclim#util#Echo('No results found: Ack' . args)
   endif
 endfunction " }}}
