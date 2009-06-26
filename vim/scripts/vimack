@@ -4,12 +4,38 @@
 # Allows you to use ack as the vim grepprg without losing the ability to run
 # :grep <ctrl-r>/
 ###
+
 use strict;
-use App::Ack ();
+
+# Ack installed as perl module.
+eval {
+  require App::Ack;
+  App::Ack->import();
+};
+
+# Ack installed as standalone script.
+if ($@){
+  my $ackpath = `which ack`;
+  $ackpath =~ s/(^\s+|\s+$)//;
+  print "vimack: using standalone ack: $ackpath\n";
+  my $ackcontent;
+  {
+    local $/=undef;
+    open FILE, "$ackpath" or die "Couldn't open file: $!";
+    $ackcontent = <FILE>;
+    close FILE;
+  }
+  # hack to prevent variable warnings on eval of standalone ack.
+  open(SAVE, '>&STDERR') or die $!;
+  open(STDERR, '>/dev/null');
+  eval "package AckStandalone; sub {" . $ackcontent . "}";
+  open( STDERR, '>&SAVE' ) or die $!;
+}
 
 my @args= @ARGV;
 my $opt = App::Ack::get_command_line_options();
-my $regex = App::Ack::build_regex(defined $opt->{regex} ? $opt->{regex} : shift @ARGV, $opt);
+my $regex = App::Ack::build_regex(defined $opt->{regex} ?
+  $opt->{regex} : shift @ARGV, $opt);
 my $regex_orig = $regex;
 
 # remove leading \V that vim may add when using '*'
