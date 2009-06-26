@@ -14,7 +14,7 @@ endif
 " Executes ack and populates the quickfix buffer with the results.
 function! s:Ack(args)
   if !executable('ack')
-    call eclim#util#EchoError("'ack' not found on your system path.")
+    call s:Echo("'ack' not found on your system path.", 'Error')
     return
   endif
 
@@ -59,7 +59,9 @@ function! s:Ack(args)
     set errorformat=%-Gack:%.%#,%-Gvimack:%.%#,%f:%l:%c:%m,%f:%l:%m,%-G%.%#
     let cmd = 'vimack ' . escape(args, '|')
     cexpr system(cmd)
-    call eclim#display#signs#Show('i', 'qf')
+    if exists('g:EclimHome')
+      call eclim#display#signs#Show('i', 'qf')
+    endif
   finally
     let &errorformat = saveerrorformat
   endtry
@@ -67,10 +69,21 @@ function! s:Ack(args)
   " ack returns 1 on no results found, so errors are greater than that.
   if v:shell_error > 1
     let error = system(cmd)
-    call eclim#util#EchoError(error)
+    call s:Echo(error, 'Error')
   elseif len(getqflist()) == 0
-    call eclim#util#Echo('No results found: Ack' . args)
+    call s:Echo('No results found: Ack' . args, 'WarningMsg')
   endif
+endfunction " }}}
+
+" s:Echo(message, hightlight) {{{
+function s:Echo(message, highlight)
+  exec "echohl " . a:highlight
+  redraw
+  for line in split(a:message, '\n')
+    echom line
+  endfor
+  let b:eclim_last_message_line = line('.')
+  echohl None
 endfunction " }}}
 
 " vim:ft=vim:fdm=marker
