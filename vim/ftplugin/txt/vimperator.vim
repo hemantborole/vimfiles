@@ -1,7 +1,6 @@
 " Author: Eric Van Dewoestine
 
 if expand('%:t') !~ '^vimperator-.*\.tmp$'
-  echom 'finish: ' . expand('%')
   finish
 endif
 
