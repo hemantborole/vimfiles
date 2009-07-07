@@ -1,8 +1,9 @@
 " Author: Eric Van Dewoestine
 
-if expand('%:t') !~ '^vimperator-.*\.tmp$'
+if exists('vimperator_loaded') || expand('%:t') !~ '^vimperator-.*\.tmp$'
   finish
 endif
+let vimperator_loaded = 1
 
 " Global Variables {{{
 
@@ -16,6 +17,9 @@ endif
 
   augroup vimperator_editor
     autocmd BufWritePost <buffer> call <SID>Save()
+    " must be in a file that is loaded prior to vim firing this event (.vimrc)
+    "autocmd SwapExists vimperator*.tmp call VimperatorEditorRecover(1)
+    autocmd BufEnter vimperator*.tmp call VimperatorEditorRecover(2)
   augroup END
 
 " }}}
@@ -25,6 +29,25 @@ endif
   command VimperatorEditorPrevious :call <SID>RestorePrevious()
 
 " }}}
+
+" Mappings {{{
+
+  " the current version of vim (7.2.182) sometimes crashes when applying a
+  " spelling correction.
+  nnoremap z= :call <SID>Save()<cr>z=
+
+" }}}
+
+" VimperatorEditorRecover(stage) {{{
+function VimperatorEditorRecover(stage)
+  if a:stage == 1
+    let v:swapchoice = 'd'
+    let g:VimperatorEditorRecover = 1
+  elseif exists('g:VimperatorEditorRecover')
+    unlet g:VimperatorEditorRecover
+    call s:RestorePrevious()
+  endif
+endfunction " }}}
 
 " s:Save() {{{
 function s:Save()
