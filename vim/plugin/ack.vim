@@ -6,13 +6,16 @@
 
 " Command Declarations {{{
 if !exists(":Ack")
-  command -nargs=+ Ack :call <SID>Ack(<q-args>)
+  command -nargs=+ Ack :call <SID>Ack(<q-args>, 0)
+endif
+if !exists(":AckRelative")
+  command -nargs=+ AckRelative :call <SID>Ack(<q-args>, 1)
 endif
 " }}}
 
-" s:Ack(args) {{{
+" s:Ack(args, relative) {{{
 " Executes ack and populates the quickfix buffer with the results.
-function! s:Ack(args)
+function! s:Ack(args, relative)
   if !executable('ack')
     call s:Echo("'ack' not found on your system path.", 'Error')
     return
@@ -54,6 +57,10 @@ function! s:Ack(args)
   endwhile
   let args .= ' "' . arg . '"'
 
+  if a:relative
+    let cwd = getcwd()
+    exec 'cd ' . expand('%:p:h')
+  endif
   let saveerrorformat = &errorformat
   try
     set errorformat=%-Gack:%.%#,%-Gvimack:%.%#,%f:%l:%c:%m,%f:%l:%m,%-G%.%#
@@ -64,6 +71,9 @@ function! s:Ack(args)
     endif
   finally
     let &errorformat = saveerrorformat
+    if a:relative
+      exec 'cd ' . cwd
+    endif
   endtry
 
   " ack returns 1 on no results found, so errors are greater than that.
