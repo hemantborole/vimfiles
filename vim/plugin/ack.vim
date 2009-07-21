@@ -92,7 +92,6 @@ function s:Echo(message, highlight)
   for line in split(a:message, '\n')
     echom line
   endfor
-  let b:eclim_last_message_line = line('.')
   echohl None
 endfunction " }}}
 
