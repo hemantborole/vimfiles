@@ -24,20 +24,25 @@ function! s:Ack(args, relative)
   let index = 0
   let args = ''
   let arg = ''
-  let quote = 0
+  let quote = ''
   let escape = 0
   let prev = ''
   while index < len(a:args)
     let char = a:args[index]
     " spaces that are not escaped or inside of a quoted expression, delimit
     " args
-    if char == ' ' && !quote && !escape
-      let args .= ' "' . arg . '"'
+    if char == ' ' && quote == '' && !escape
+      let args .= " '" . arg . "'"
       let arg = ''
     " double or single quote, when not escaped, start or end a quoted
-    " expression
+    " expression unless the quote encountered is in a quoted expression
+    " started by the other type of quote.
     elseif char =~ "['\"]" && !escape
-      let quote = !quote
+      if quote != '' && char != quote
+        let arg .= char
+      else
+        let quote = (quote == '' ? char : '')
+      endif
     else
       if char == '\'
         let escape = !escape
@@ -55,7 +60,15 @@ function! s:Ack(args, relative)
     let prev = char
     let index += 1
   endwhile
-  let args .= ' "' . arg . '"'
+
+  " escaping a single quote in a single quoted string is a bit of a pain.
+  " http://bash-hackers.org/wiki/doku.php/syntax/quoting#strong_quoting
+  " # wrong
+  " echo 'Here's my test'
+  " # right
+  " echo 'Here'\''s my test'
+  " Vim requires several backslashes to get that right.
+  let args .= " '" . substitute(arg, "'", "'\\\\''", "g") . "'"
 
   if a:relative
     let cwd = getcwd()
@@ -64,7 +77,7 @@ function! s:Ack(args, relative)
   let saveerrorformat = &errorformat
   try
     set errorformat=%-Gack:%.%#,%-Gvimack:%.%#,%f:%l:%c:%m,%f:%l:%m,%-G%.%#
-    let cmd = 'vimack ' . escape(args, '|')
+    let cmd = 'vimack ' . args
     cexpr system(cmd)
     if exists('g:EclimHome')
       call eclim#display#signs#Show('i', 'qf')
