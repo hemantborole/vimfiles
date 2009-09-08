@@ -29,7 +29,7 @@ if ($@){
   open(SAVE, '>&STDERR') or die $!;
   open(STDERR, '>/dev/null');
   eval "package AckStandalone; sub {" . $ackcontent . "}";
-  open( STDERR, '>&SAVE' ) or die $!;
+  open(STDERR, '>&SAVE') or die $!;
 }
 
 my @args= @ARGV;
