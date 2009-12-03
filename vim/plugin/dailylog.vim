@@ -16,13 +16,13 @@
 "   new log entry.
 "
 "   DailyLogStop: Opens the current daily log file if necessary and stops the
-"   currently unfinished entry.  If more than one entry is unended, then you
-"   will be prompted for the entry to stop.
+"   currently unfinished entry.  If more than one entry is unfinished, then
+"   you will be prompted for the entry to stop.
 "
 "   DailyLogRestart: Opens the current daily log file if necessary and prompts
 "   you for the entry to restart.
 "
-"   DailyLogReport: Aggrgates per task and total times and updates the file
+"   DailyLogReport: Aggregates per task and total times and updates the file
 "   with reports of time spent on each task and overall.
 "
 "   DailyLogSearch: Searches your configured daily log directory via vimgrep
