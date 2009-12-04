@@ -5,7 +5,7 @@
 if !exists('g:CopyrightPattern')
   " group 1 must be the text leading up to the most recent year
   " group 2 must be the most recent year to check against the current year.
-  let g:CopyrightPattern = '\(Copyright.\{-}\%\(\d\{4}\s*-\s*\)\{0,1}\)\(\d\{4}\)'
+  let g:CopyrightPattern = '\(Copyright.\{-}\%\(\d\{4}\s*[-,]\s*\)\{0,1}\)\(\d\{4}\)'
 endif
 
 if !exists('g:CopyrightAddRange')
@@ -68,7 +68,7 @@ function! s:UpdateCopyright()
     if response == '' || response !~ '\c\s*\(y\(es\)\?\)\s*'
       return
     endif
-    if g:CopyrightAddRange && line !~ '\d\{4}\s*-\s*' . year
+    if g:CopyrightAddRange && line !~ '\d\{4}\s*[-,]\s*' . year
       let sub = '\1' . year . ' - ' . s:year
     else
       let sub = '\1' . s:year
