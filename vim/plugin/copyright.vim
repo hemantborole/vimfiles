@@ -3,7 +3,13 @@
 " Global Variables {{{
 
 if !exists('g:CopyrightPattern')
-  let g:CopyrightPattern = '\%\(Copyright.\{-}\d\{4}\s*-\s*\)\@<=\(\d\{4}\)'
+  " group 1 must be the text leading up to the most recent year
+  " group 2 must be the most recent year to check against the current year.
+  let g:CopyrightPattern = '\(Copyright.\{-}\%\(\d\{4}\s*-\s*\)\{0,1}\)\(\d\{4}\)'
+endif
+
+if !exists('g:CopyrightAddRange')
+  let g:CopyrightAddRange = 1
 endif
 
 if !exists('g:CopyrightMaxLines')
@@ -40,7 +46,7 @@ function! s:UpdateCopyright()
     endif
 
     let line = getline(lnum)
-    let year = substitute(line, '.\{-}' . g:CopyrightPattern . '.*', '\1', '')
+    let year = substitute(line, '.\{-}' . g:CopyrightPattern . '.*', '\2', '')
     if year == s:year
       return
     endif
@@ -62,7 +68,12 @@ function! s:UpdateCopyright()
     if response == '' || response !~ '\c\s*\(y\(es\)\?\)\s*'
       return
     endif
-    call setline(lnum, substitute(line, g:CopyrightPattern, s:year, ''))
+    if g:CopyrightAddRange && line !~ '\d\{4}\s*-\s*' . year
+      let sub = '\1' . year . ' - ' . s:year
+    else
+      let sub = '\1' . s:year
+    endif
+    call setline(lnum, substitute(line, g:CopyrightPattern, sub, ''))
   finally
     call setpos('.', pos)
     let b:copyright_checked = 1
