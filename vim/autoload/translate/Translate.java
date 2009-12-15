@@ -1,5 +1,7 @@
 import java.util.EnumSet;
 
+import com.google.api.translate.Language;
+
 /**
  * Simple program which utilizes google's translation api to translate text from
  * one language to another.
@@ -12,7 +14,7 @@ public class Translate
    * Translate the given text from the source language to the target language.
    *
    * Example, translating from english to german.
-   * java -cp google-api-translate-java-0.53.jar:. Translate "Hello World" en de
+   * java -cp google-api-translate-java-0.91.jar:. Translate "Hello World" en de
    *
    * @param args
    */
@@ -23,8 +25,7 @@ public class Translate
     // completion.
     if(args.length == 1 && "-c".equals(args[0])){
       // next version should be using enums
-      //for (Enum lang : EnumSet.allOf(com.google.api.translate.Language.class)){
-      for (String lang : com.google.api.translate.Language.validLanguages){
+      for (Enum lang : EnumSet.allOf(Language.class)){
         System.out.print(lang + " ");
       }
       System.out.println();
@@ -42,10 +43,11 @@ public class Translate
     String text = args[0].trim();
     text = text.replaceAll("\n", " && ");
 
-    String slang = args[1];
-    String tlang = args[2];
+    Language slang = Language.fromString(args[1]);
+    Language tlang = Language.fromString(args[2]);
+    com.google.api.translate.Translate.setHttpReferrer("none");
     String translation =
-      com.google.api.translate.Translate.translate(text, slang, tlang);
+      com.google.api.translate.Translate.execute(text, slang, tlang);
     translation = translation.replaceAll(" & & ", "\n");
     System.out.println(translation);
 
