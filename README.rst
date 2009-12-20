@@ -37,7 +37,7 @@ vimperator plugins
   background and text color to improve readability (intended for text heavy
   sites whose default colors are too bright or dark to read comfortably)
 
-**Note**: Vimperator plugins required vimperator 2.1 or above, with the
+**Note**: Vimperator plugins require vimperator 2.1 or above, with the
 exception of wincmd which requires vimperator 2.2 or above.
 
 rxvt-unicode plugins
