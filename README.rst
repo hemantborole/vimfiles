@@ -14,12 +14,14 @@ vim plugins
 - `supertab`_ - allows you to use <tab> for all your insert completion needs
 - `screen`_ - simulate a split shell in vim using gnu screen or tmux
 - ack - run ack and load the results in vim's quickfix
-- copyright - check for out of date copyright years on save and update prompt
-  for update if necessary
+- copyright - check for out of date copyright years on file save and prompt to
+  update the years if necessary
 - dailylog - keep track of and report time spent working on tasks
 - notebook - manage notes using vim's help files syntax and tags
-- scratch - open a scratch buffer and saves the previous contents
-- translate - translate text using google's translation service
+- scratch - open a filetype scratch buffer (auto saves the previous contents in
+  case they need to be recovered)
+- translate - translate text using google's translation service (requires java
+  to be installed)
 
 vimperator plugins
 ------------------
@@ -31,6 +33,11 @@ vimperator plugins
 - search - use your configured search engine to search the current website
 - translate - translate the current page using yahoo's babel fish.
 - wincmd - provide vim style :wincmd and <c-w> commands to navigate frames
+
+.. note::
+
+  Vimperator plugins required vimperator 2.1 or above, with the exception of
+  wincmd which requires vimperator 2.2 or above.
 
 rxvt-unicode plugins
 --------------------
