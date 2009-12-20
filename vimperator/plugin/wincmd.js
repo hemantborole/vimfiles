@@ -66,7 +66,7 @@
  *   - if possible, add other wincmd equivalent commands
  *     (J, K, L, H, X, T, etc.)
  *
- * @version 0.3
+ * @version 0.4
  */
 function Wincmd() {
   function dimensions(frame){
@@ -165,7 +165,7 @@ function Wincmd() {
       var frames = [];
 
       // find all frames - depth-first search
-      (function (frame) {
+      (function(frame) {
           if (frame.document.body.localName.toLowerCase() == "body")
             frames.push(frame);
           Array.forEach(frame.frames, arguments.callee);
@@ -173,7 +173,7 @@ function Wincmd() {
 
       // remove all unfocusable frames
       var start = document.commandDispatcher.focusedWindow;
-      frames = frames.filter(function (frame) {
+      frames = frames.filter(function(frame) {
         frame.focus();
         if (frame.frameElement &&
           document.commandDispatcher.focusedWindow == frame)
@@ -229,7 +229,7 @@ function Wincmd() {
       var indicator = util.xmlToDom(<div highlight="FrameIndicator"/>, doc);
       doc.body.appendChild(indicator);
 
-      setTimeout(function () { doc.body.removeChild(indicator); }, 500);
+      setTimeout(function() { doc.body.removeChild(indicator); }, 500);
     }
   }
 }
@@ -242,80 +242,85 @@ commands.add(["wincm[d]"],
     count = args.count > 1 ? args.count : "";
     switch(args.string){
       case "j":
-        events.feedkeys(count + '<c-w>j');
+        wcv.setFrameFocus(count, function(count, current, frames){
+          return wcv.nextVertical(count, current, frames, true);
+        });
         break;
       case "k":
-        events.feedkeys(count + '<c-w>k');
+        wcv.setFrameFocus(count, function(count, current, frames){
+          return wcv.nextVertical(count, current, frames, false);
+        });
         break;
       case "h":
-        events.feedkeys(count + '<c-w>h');
+        wcv.setFrameFocus(count, function(count, current, frames){
+          return wcv.nextHorizontal(count, current, frames, false);
+        });
         break;
       case "l":
-        events.feedkeys(count + '<c-w>l');
+        wcv.setFrameFocus(count, function(count, current, frames){
+          return wcv.nextHorizontal(count, current, frames, true);
+        });
         break;
       case "w":
-        events.feedkeys(count + '<c-w>w');
+        wcv.setFrameFocus(count, function(count, current, frames){
+          var currentIndex = frames.indexOf(current);
+          if (currentIndex < frames.length - count){
+            index = currentIndex + count;
+          }else{
+            index = currentIndex + count - frames.length;
+          }
+          return index < frames.length ? frames[index] : frames[frames.length - 1];
+        });
         break;
       default:
-        liberator.echoerr("unsupported argument for wincmd");
+        liberator.echoerr("unsupported argument for wincmd: " + args.string);
         return false;
     }
     return true;
   }, {count: true, argCount: 1}
 );
 
-mappings.add([modes.NORMAL], ["<c-w>w", "<c-w><c-w>"],
+mappings.add([modes.NORMAL], ["<C-w>w", "<C-w><C-w>"],
     "Cycle through frames",
-    function (count) {
-      wcv.setFrameFocus(count, function(count, current, frames){
-        var currentIndex = frames.indexOf(current);
-        if (currentIndex < frames.length - count){
-          index = currentIndex + count;
-        }else{
-          index = currentIndex + count - frames.length;
-        }
-        return index < frames.length ? frames[index] : frames[frames.length - 1];
-      });
+    function(count) {
+      count = count > 0 ? count : '';
+      events.feedkeys(":" + count + "wincmd w<cr>");
     },
-    { flags: Mappings.flags.COUNT }
+    { count: true }
 );
 
-mappings.add([modes.NORMAL], ["<c-w>j", "<c-w><c-j>"],
+mappings.add([modes.NORMAL], ["<C-w>j", "<C-w><C-j>"],
     "Move to the frame below the current one.",
-    function (count) {
-      wcv.setFrameFocus(count, function(count, current, frames){
-        return wcv.nextVertical(count, current, frames, true);
-      });
+    function(count) {
+      count = count > 0 ? count : '';
+      events.feedkeys(":" + count + "wincmd j<cr>");
     },
-    { flags: Mappings.flags.COUNT }
+    { count: true }
 );
 
-mappings.add([modes.NORMAL], ["<c-w>k", "<c-w><c-k>"],
+mappings.add([modes.NORMAL], ["<C-w>k", "<C-w><C-k>"],
     "Move to the frame above the current one.",
-    function (count) {
-      wcv.setFrameFocus(count, function(count, current, frames){
-        return wcv.nextVertical(count, current, frames, false);
-      });
+    function(count) {
+      count = count > 0 ? count : '';
+      events.feedkeys(":" + count + "wincmd k<cr>");
     },
-    { flags: Mappings.flags.COUNT }
+    { count: true }
 );
 
-mappings.add([modes.NORMAL], ["<c-w>l", "<c-w><c-l>"],
+mappings.add([modes.NORMAL], ["<C-w>l", "<C-w><C-l>"],
     "Move to the frame to the right of the current one.",
-    function (count) {
-      wcv.setFrameFocus(count, function(count, current, frames){
-        return wcv.nextHorizontal(count, current, frames, true);
-      });
+    function(count) {
+      count = count > 0 ? count : '';
+      events.feedkeys(":" + count + "wincmd l<cr>");
     },
-    { flags: Mappings.flags.COUNT }
+    { count: true }
 );
 
-mappings.add([modes.NORMAL], ["<c-w>h", "<c-w><c-h>"],
+mappings.add([modes.NORMAL], ["<C-w>h", "<C-w><C-h>"],
     "Move to the frame to the left of the current one.",
-    function (count) {
-      wcv.setFrameFocus(count, function(count, current, frames){
-        return wcv.nextHorizontal(count, current, frames, false);
-      });
+    function(count) {
+      count = count > 0 ? count : '';
+      events.feedkeys(":" + count + "wincmd h<cr>");
     },
-    { flags: Mappings.flags.COUNT }
+    { count: true }
 );
