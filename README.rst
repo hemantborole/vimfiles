@@ -33,11 +33,12 @@ vimperator plugins
 - search - use your configured search engine to search the current website
 - translate - translate the current page using yahoo's babel fish.
 - wincmd - provide vim style :wincmd and <c-w> commands to navigate frames
+- contrast - provides a command which attempts to alter the current page's
+  background and text color to improve readability (intended for text heavy
+  sites whose default colors are too bright or dark to read comfortably)
 
-.. note::
-
-  Vimperator plugins required vimperator 2.1 or above, with the exception of
-  wincmd which requires vimperator 2.2 or above.
+**Note**: Vimperator plugins required vimperator 2.1 or above, with the
+exception of wincmd which requires vimperator 2.2 or above.
 
 rxvt-unicode plugins
 --------------------
