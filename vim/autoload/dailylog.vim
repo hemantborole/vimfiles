@@ -107,8 +107,8 @@
     \ '^\(daily_log_.\{-}\)\s\+.*$'
 
   let s:browsers = [
-      \ 'opera', 'firefox', 'konqueror', 'epiphany',
-      \ 'mozilla', 'netscape', 'iexplore'
+      \ 'xdg-open', 'opera', 'firefox', 'konqueror',
+      \ 'epiphany', 'mozilla', 'netscape', 'iexplore'
     \ ]
 
   let s:time_format = '%R'
@@ -703,7 +703,7 @@ function! s:DetermineBrowser ()
       "if executable('rundll32')
       "  let browser = '!rundll32 url.dll,FileProtocolHandler <url>'
       "endif
-      " the doesn't handle local files very well or '&' in the url.
+      " this doesn't handle local files very well or '&' in the url.
       "let browser = '!cmd /c start <url>'
       for name in s:win_browsers
         if executable(name)

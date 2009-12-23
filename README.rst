@@ -62,7 +62,7 @@ rxvt-unicode plugins
     urxvt*vim-scrollback-paste: Mod1-r
     urxvt*vim-scrollback-bg: 10
     urxvt*vim-scrollback-fg: 18
-    urxvt*urlLauncher: firefox
+    urxvt*urlLauncher: xdg-open
     urxvt*pattern.1: (.*[ \"',(\\[{><]|^)(.*?)([ \"',)\\]}<>].*|$)
     urxvt*launcher.1: urxvt +sb -geometry 125x50 -e vim $2
 
